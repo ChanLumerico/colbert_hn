@@ -1,0 +1,12 @@
+torch
+transformers
+beir
+colbert-ai
+scikit-learn
+numpy
+pandas
+tqdm
+matplotlib
+seaborn
+pyyaml
+jupyter

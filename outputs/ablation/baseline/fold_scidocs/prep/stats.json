@@ -1,0 +1,12 @@
+{
+  "datasets": {
+    "scifact": {
+      "triplets": 13722,
+      "queries": 300
+    },
+    "nfcorpus": {
+      "triplets": 56002,
+      "queries": 323
+    }
+  }
+}

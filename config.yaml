@@ -1,0 +1,18 @@
+model:
+  colbert: "colbert-ir/colbertv2.0"
+  device: "cuda"
+
+datasets:
+  - "scifact"
+  - "nfcorpus"
+  - "scidocs"
+
+retrieval:
+  top_k: 100
+
+analysis:
+  target_layers: [0, 3, 6, 9, 12]
+
+paths:
+  outputs: "outputs/"
+  data_cache: "data/"

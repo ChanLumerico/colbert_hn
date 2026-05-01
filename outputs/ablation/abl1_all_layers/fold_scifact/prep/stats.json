@@ -1,0 +1,12 @@
+{
+  "datasets": {
+    "nfcorpus": {
+      "triplets": 56002,
+      "queries": 323
+    },
+    "scidocs": {
+      "triplets": 65569,
+      "queries": 1000
+    }
+  }
+}

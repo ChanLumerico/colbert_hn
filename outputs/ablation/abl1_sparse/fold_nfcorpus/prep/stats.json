@@ -1,0 +1,12 @@
+{
+  "datasets": {
+    "scifact": {
+      "triplets": 13722,
+      "queries": 300
+    },
+    "scidocs": {
+      "triplets": 65569,
+      "queries": 1000
+    }
+  }
+}
