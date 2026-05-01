@@ -18,9 +18,10 @@ def load_beir_dataset(dataset_name: str, split: str = "test") -> Tuple[Dict, Dic
     """
     url = f"https://public.ukp.informatik.tu-darmstadt.de/thakur/BEIR/datasets/{dataset_name}.zip"
     
-    # Get project root (parent of shared/)
+    # Get true project root (parent of phase_01/)
     shared_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.dirname(shared_dir)
+    # shared -> phase_01 -> root
+    project_root = os.path.dirname(os.path.dirname(shared_dir))
     cache_dir = os.path.join(project_root, "data")
     
     os.makedirs(cache_dir, exist_ok=True)
