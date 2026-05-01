@@ -1,74 +1,71 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+from typing import List, Tuple
 
 class DualHeadLayerRouter(nn.Module):
+    """
+    Phase 2: Multi-task Learning Router for Knowledge Distillation
+    Heads:
+    1. Introspection Head: Predicts ColBERT margin (Self-correction)
+    2. Distillation Head: Predicts Mistral E5 semantic margin (Knowledge Distillation)
+    """
     def __init__(self, 
                  num_layers: int = 5, 
                  embed_dim: int = 128, 
-                 hidden_dim: int = 256, 
-                 dropout: float = 0.1,
-                 use_layernorm: bool = True):
-        """
-        Phase 02 Dual-Head LayerRouter.
-        Implements Multi-Task Learning for ColBERT Margin and Mistral Soft Label Margin.
-        """
+                 hidden_dims: List[int] = [256],
+                 fusion_type: str = "interaction"):
         super().__init__()
+        self.num_layers = num_layers
+        self.embed_dim = embed_dim
+        self.fusion_type = fusion_type
         
-        # Backbone input configuration based on Phase 1 Golden Recipe (abl2_inter_norm)
-        # Features: [Q; D; |Q-D|; Q*D]
-        feature_dim = num_layers * embed_dim
-        input_dim = feature_dim * 4
-        
-        self.use_layernorm = use_layernorm
-        if self.use_layernorm:
-            self.layer_norm = nn.LayerNorm(input_dim)
+        # 1. Feature Fusion Layer
+        if fusion_type == "concat":
+            input_dim = num_layers * embed_dim * 2
+        elif fusion_type == "interaction":
+            input_dim = num_layers * embed_dim
+        else:
+            raise ValueError(f"Unknown fusion type: {fusion_type}")
             
-        # ---------------------------------------------------------
-        # Shared Backbone (Extracts task-agnostic semantic features)
-        # ---------------------------------------------------------
-        self.shared_backbone = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Dropout(dropout)
-        )
+        # 2. Shared Backbone
+        layers = []
+        curr_dim = input_dim
+        for h_dim in hidden_dims:
+            layers.append(nn.Linear(curr_dim, h_dim))
+            layers.append(nn.LayerNorm(h_dim))
+            layers.append(nn.ReLU())
+            layers.append(nn.Dropout(0.1))
+            curr_dim = h_dim
+        self.backbone = nn.Sequential(*layers)
         
-        # ---------------------------------------------------------
-        # Task-Specific Heads
-        # ---------------------------------------------------------
-        # Head C: Predicts ColBERT's introspective margin (Self-Correction)
-        self.head_c = nn.Linear(hidden_dim, 1) 
+        # 3. Dual Heads
+        # Head 1: ColBERT Introspection (Binary classification or Margin regression)
+        self.introspection_head = nn.Linear(curr_dim, 1)
         
-        # Head M: Predicts Mistral 7B's semantic margin (Knowledge Distillation)
-        self.head_m = nn.Linear(hidden_dim, 1) 
-
-    def forward(self, q_reps, d_reps):
+        # Head 2: Mistral E5 Distillation (Margin regression)
+        self.distillation_head = nn.Linear(curr_dim, 1)
+        
+    def forward(self, q_reps: torch.Tensor, d_reps: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        Args:
-            q_reps: (batch, num_layers, embed_dim)
-            d_reps: (batch, num_layers, embed_dim)
-        Returns:
-            pred_c: ColBERT margin prediction
-            pred_m: Mistral margin prediction
+        Input shapes: (B, L, D)
+        Returns: (introspection_logits, distillation_logits)
         """
-        # 1. Flatten layer representations
-        batch_size = q_reps.size(0)
-        q_flat = q_reps.reshape(batch_size, -1)
-        d_flat = d_reps.reshape(batch_size, -1)
+        B, L, D = q_reps.shape
         
-        # 2. Fusion Strategy (Interaction + Difference)
-        diff = torch.abs(q_flat - d_flat)
-        prod = q_flat * d_flat
-        x = torch.cat([q_flat, d_flat, diff, prod], dim=-1)
-        
-        # 3. Normalization
-        if self.use_layernorm:
-            x = self.layer_norm(x)
+        # Fusion
+        if self.fusion_type == "concat":
+            x = torch.cat([q_reps, d_reps], dim=-1) # (B, L, 2D)
+            x = x.view(B, -1) # (B, L*2D)
+        elif self.fusion_type == "interaction":
+            x = q_reps * d_reps # (B, L, D) - Hadamard product
+            x = x.view(B, -1) # (B, L*D)
             
-        # 4. Shared Representation Extraction
-        shared_repr = self.shared_backbone(x)
+        # Shared representations
+        shared_feat = self.backbone(x)
         
-        # 5. Multi-Head Predictions
-        pred_c = self.head_c(shared_repr).squeeze(-1)
-        pred_m = self.head_m(shared_repr).squeeze(-1)
+        # Multi-task outputs
+        introspection_out = self.introspection_head(shared_feat).squeeze(-1)
+        distillation_out = self.distillation_head(shared_feat).squeeze(-1)
         
-        return pred_c, pred_m
+        return introspection_out, distillation_out
