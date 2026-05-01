@@ -4,7 +4,9 @@ import yaml
 import numpy as np
 
 # Resolve path for shared module
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+PHASE_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if PHASE_ROOT not in sys.path:
+    sys.path.append(PHASE_ROOT)
 
 from shared.data_utils import load_beir_dataset, load_json, save_json
 from shared.colbert_inspector import ColBERTInspector
@@ -13,7 +15,7 @@ from representation_geometry import analyze_geometry
 
 def main():
     # 1. Load config
-    config_path = "config.yaml"
+    config_path = os.path.join(PHASE_ROOT, "config.yaml")
     with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
         
@@ -34,7 +36,7 @@ def main():
         corpus, queries, _ = load_beir_dataset(ds, split="test")
         
         # Load triplets from Step 1
-        triplet_path = f"outputs/01_confusion_analysis/{ds}/results.json"
+        triplet_path = os.path.join(PHASE_ROOT, f"outputs/01_confusion_analysis/{ds}/results.json")
         if not os.path.exists(triplet_path):
             print(f"Step 1 results not found for {ds}. Please run 01_confusion_analysis/run.py first.")
             continue
@@ -78,12 +80,15 @@ def main():
         }
         
         # Save dataset results
-        output_path = f"outputs/02_layer_signal/{ds}/results.json"
+        output_path = os.path.join(PHASE_ROOT, f"outputs/02_layer_signal/{ds}/results.json")
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
         save_json(ds_results, output_path)
         all_dataset_results[ds] = ds_results
         
     # 4. Save global summary
-    save_json(all_dataset_results, "outputs/02_layer_signal/summary.json")
+    summary_path = os.path.join(PHASE_ROOT, "outputs/02_layer_signal/summary.json")
+    os.makedirs(os.path.dirname(summary_path), exist_ok=True)
+    save_json(all_dataset_results, summary_path)
     
     # 5. Print Summary Table
     print("\n" + "="*80)

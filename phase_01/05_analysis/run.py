@@ -5,8 +5,9 @@ import yaml
 import importlib
 
 # Resolve paths
-root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(root_dir)
+PHASE_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if PHASE_ROOT not in sys.path:
+    sys.path.append(PHASE_ROOT)
 
 from shared.data_utils import load_beir_dataset, save_json
 from shared.colbert_inspector import ColBERTInspector
@@ -21,7 +22,7 @@ rerank_with_router = rerank_mod.rerank_with_router
 
 def main():
     # 1. Load config
-    config_path = "config.yaml"
+    config_path = os.path.join(PHASE_ROOT, "config.yaml")
     with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
         
@@ -32,7 +33,8 @@ def main():
     # 2. Initialize Models
     inspector = ColBERTInspector(model_name=model_name, device=device)
     router = LayerRouter(num_layers=5, embed_dim=128)
-    router.load_state_dict(torch.load("outputs/03_router_training/router_model.pt", map_location=device))
+    model_pth = os.path.join(PHASE_ROOT, "outputs/03_router_training/router_model.pt")
+    router.load_state_dict(torch.load(model_pth, map_location=device))
     router.to(device)
     router.eval()
     
@@ -74,12 +76,13 @@ def main():
             print(f"  {cat:<15}: {count}")
             
     # 4. Save analysis
-    os.makedirs("outputs/05_analysis", exist_ok=True)
-    save_json(analysis_results, "outputs/05_analysis/breakdown.json")
+    out_dir = os.path.join(PHASE_ROOT, "outputs/05_analysis")
+    os.makedirs(out_dir, exist_ok=True)
+    save_json(analysis_results, os.path.join(out_dir, "breakdown.json"))
     
     print("\n" + "="*80)
     print("Failure Analysis Complete!")
-    print("Detailed breakdown saved to outputs/05_analysis/breakdown.json")
+    print(f"Detailed breakdown saved to {out_dir}/breakdown.json")
     print("="*80 + "\n")
 
 if __name__ == "__main__":

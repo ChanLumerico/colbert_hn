@@ -1,12 +1,20 @@
-import yaml
+import sys
 import os
+import yaml
+
+# Set root to phase_01
+PHASE_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '../'))
+if PHASE_ROOT not in sys.path:
+    sys.path.append(PHASE_ROOT)
+
 from shared.colbert_inspector import ColBERTInspector
 from shared.data_utils import save_json
 from confusion_rate import compute_confusion_by_dataset, summarize_across_datasets
 
 def main():
     # 1. Load config
-    with open("config.yaml", "r") as f:
+    config_path = os.path.join(PHASE_ROOT, "config.yaml")
+    with open(config_path, "r") as f:
         config = yaml.safe_load(f)
     
     # 2. Initialize ColBERTInspector
@@ -29,7 +37,9 @@ def main():
     summary = summarize_across_datasets(all_results)
     
     # 5. Save summary
-    save_json(summary, "outputs/01_confusion_analysis/summary.json")
+    out_path = os.path.join(PHASE_ROOT, "outputs/01_confusion_analysis/summary.json")
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    save_json(summary, out_path)
     
     # 6. Print summary table
     print("\n" + "="*80)

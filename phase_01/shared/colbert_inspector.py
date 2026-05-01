@@ -152,10 +152,10 @@ class ColBERTInspector:
             q_scores = []
             doc_idx = 0
             for doc_batch in all_doc_embs:
-                # doc_batch: (B, seq_len_d, 128)
-                # q_emb: (seq_len_q_active, 128)
+                # Move to device for computation
+                batch_on_device = doc_batch.to(self.device)
                 # Compute dot product: (B, seq_len_q_active, seq_len_d)
-                scores = torch.matmul(q_emb, doc_batch.transpose(1, 2)) 
+                scores = torch.matmul(q_emb, batch_on_device.transpose(1, 2)) 
                 # MaxSim: max over doc tokens, sum over query tokens
                 max_scores = scores.max(dim=-1).values # (B, seq_len_q_active)
                 sum_scores = max_scores.sum(dim=-1) # (B)

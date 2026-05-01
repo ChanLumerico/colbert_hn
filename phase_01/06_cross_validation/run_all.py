@@ -6,8 +6,9 @@ import importlib
 from typing import List, Dict
 
 # Resolve paths
-root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(root_dir)
+PHASE_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if PHASE_ROOT not in sys.path:
+    sys.path.append(PHASE_ROOT)
 
 from shared.data_utils import load_beir_dataset, save_json, build_triplets
 from shared.colbert_inspector import ColBERTInspector
@@ -32,7 +33,7 @@ compute_all_metrics = baseline_mod.compute_all_metrics
 
 def main():
     # 1. Load config
-    config_path = "config.yaml"
+    config_path = os.path.join(PHASE_ROOT, "config.yaml")
     with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
@@ -117,12 +118,14 @@ def main():
         )
 
     # 3. Save Report
-    os.makedirs("outputs/06_cross_validation", exist_ok=True)
-    save_json(cross_val_results, "outputs/06_cross_validation/report.json")
-
+    out_dir = os.path.join(PHASE_ROOT, "outputs/06_cross_validation")
+    os.makedirs(out_dir, exist_ok=True)
+    report_path = os.path.join(out_dir, "report.json")
+    save_json(cross_val_results, report_path)
+    
     print("\n" + "!" * 80)
     print("CROSS-DATASET VALIDATION COMPLETE!")
-    print("Results saved to outputs/06_cross_validation/report.json")
+    print(f"Results saved to {report_path}")
     print("!" * 80 + "\n")
 
 

@@ -4,7 +4,9 @@ import torch
 import yaml
 
 # Resolve path for shared module
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+PHASE_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if PHASE_ROOT not in sys.path:
+    sys.path.append(PHASE_ROOT)
 
 from shared.data_utils import load_beir_dataset, build_triplets, save_json
 from shared.colbert_inspector import ColBERTInspector
@@ -14,7 +16,7 @@ from train import train_router
 
 def main():
     # 1. Load config
-    config_path = "config.yaml"
+    config_path = os.path.join(PHASE_ROOT, "config.yaml")
     with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
         
@@ -78,10 +80,10 @@ def main():
     history = train_router(model, dataset, epochs=20, batch_size=64, lr=1e-3, device=device)
     
     # 5. Save Results (Hierarchical)
-    out_dir = f"outputs/03_router_training/{exp_id}"
+    out_dir = os.path.join(PHASE_ROOT, f"outputs/03_router_training/{exp_id}")
     os.makedirs(out_dir, exist_ok=True)
-    torch.save(model.state_dict(), f"{out_dir}/router_model.pt")
-    save_json(history, f"{out_dir}/history.json")
+    torch.save(model.state_dict(), os.path.join(out_dir, "router_model.pt"))
+    save_json(history, os.path.join(out_dir, "history.json"))
     
     print(f"\nResults saved to {out_dir}")
 
